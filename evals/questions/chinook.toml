@@ -1,0 +1,442 @@
+# Chinook evaluation set: business questions about an online music store's sales database.
+# Written 2026-10-22 before any model run on this dataset, so none of these were chosen because
+# the model got them wrong.
+#
+# Scoring runs the gold SQL and the model's SQL against the same database and compares
+# the result sets (not the SQL text).
+#
+# Fields
+#   id          unique id; prefix e/m/h/r = easy / medium / hard / refuse
+#   difficulty  easy | medium | hard
+#   category    count | filter | aggregate | ranking | join | date | null-handling | unanswerable
+#   question    asked exactly as written
+#   sql         gold query
+#   alt_sql     (optional) other readings of an ambiguous question that also count as correct
+#   ordered     (optional, default false) row order must match, e.g. "list ... newest first"
+#   expect      (optional, default "answer") "refuse" = the data can't answer it; pass only if the
+#               system declines instead of returning a misleading number
+#   author      who wrote the question
+#   group       (optional, default "core") questions in another group are reported separately
+#               so they can't inflate or hide anything in the core score
+#
+# Matching rules (see evals/compare.py): same number of rows; every gold column must appear
+# among the predicted columns (extra columns are fine); numbers match within rounding
+# (±0.05 or 0.5%); text matches case-insensitively.
+#
+# Conventions
+# - People's names: gold returns "First Last" as one column; alt_sql returns first and last name
+#   as two columns. Either shape passes.
+# - Relative dates ("last year", "last 6 months") are relative to 2013-12-22, the latest invoice,
+#   which the prompt tells the model to treat as today.
+
+# ---------------------------------------------------------------- easy
+
+[[question]]
+id = "e01"
+difficulty = "easy"
+category = "count"
+author = "claude"
+question = "How many customers do we have?"
+sql = '''SELECT COUNT(*) FROM Customer'''
+
+[[question]]
+id = "e02"
+difficulty = "easy"
+category = "count"
+author = "claude"
+question = "How many tracks are in the catalog?"
+sql = '''SELECT COUNT(*) FROM Track'''
+
+[[question]]
+id = "e03"
+difficulty = "easy"
+category = "aggregate"
+author = "claude"
+question = "What was our total revenue across all years?"
+sql = '''SELECT ROUND(SUM(Total), 2) FROM Invoice'''
+
+[[question]]
+id = "e04"
+difficulty = "easy"
+category = "date"
+author = "claude"
+question = "How many invoices did we issue in 2011?"
+sql = '''SELECT COUNT(*) FROM Invoice WHERE InvoiceDate >= '2011-01-01' AND InvoiceDate < '2012-01-01' '''
+
+[[question]]
+id = "e05"
+difficulty = "easy"
+category = "filter"
+author = "claude"
+question = "How many customers are in Brazil?"
+sql = '''SELECT COUNT(*) FROM Customer WHERE Country = 'Brazil' '''
+
+[[question]]
+id = "e06"
+difficulty = "easy"
+category = "ranking"
+author = "claude"
+question = "Which country has the most customers?"
+sql = '''SELECT Country FROM Customer GROUP BY Country ORDER BY COUNT(*) DESC LIMIT 1'''
+
+[[question]]
+id = "e07"
+difficulty = "easy"
+category = "count"
+author = "claude"
+question = "How many employees do we have?"
+sql = '''SELECT COUNT(*) FROM Employee'''
+
+[[question]]
+id = "e08"
+difficulty = "easy"
+category = "aggregate"
+author = "claude"
+question = "What's the average invoice total?"
+sql = '''SELECT ROUND(AVG(Total), 2) FROM Invoice'''
+
+[[question]]
+id = "e09"
+difficulty = "easy"
+category = "aggregate"
+author = "claude"
+question = "What's the highest price we charge for a single track?"
+sql = '''SELECT MAX(UnitPrice) FROM Track'''
+
+[[question]]
+id = "e10"
+difficulty = "easy"
+category = "count"
+author = "claude"
+question = "How many genres do we carry?"
+sql = '''SELECT COUNT(*) FROM Genre'''
+
+[[question]]
+id = "e11"
+difficulty = "easy"
+category = "filter"
+author = "claude"
+question = "Who is our general manager?"
+sql = '''SELECT FirstName || ' ' || LastName FROM Employee WHERE Title = 'General Manager' '''
+alt_sql = ['''SELECT FirstName, LastName FROM Employee WHERE Title = 'General Manager' ''']
+
+[[question]]
+id = "e12"
+difficulty = "easy"
+category = "null-handling"
+author = "claude"
+question = "How many tracks have no composer listed?"
+sql = '''SELECT COUNT(*) FROM Track WHERE Composer IS NULL'''
+
+# ---------------------------------------------------------------- medium
+
+[[question]]
+id = "m01"
+difficulty = "medium"
+category = "date"
+author = "claude"
+question = "What was total revenue in each year?"
+sql = '''SELECT strftime('%Y', InvoiceDate), ROUND(SUM(Total), 2) FROM Invoice GROUP BY 1'''
+
+[[question]]
+id = "m02"
+difficulty = "medium"
+category = "ranking"
+author = "claude"
+question = "Who are our top 5 customers by total spend?"
+# 4th and 5th are tied at 45.62, but both are inside the top 5 and 6th is 43.62.
+sql = '''SELECT c.FirstName || ' ' || c.LastName FROM Invoice i JOIN Customer c USING (CustomerId)
+GROUP BY c.CustomerId ORDER BY SUM(i.Total) DESC LIMIT 5'''
+alt_sql = ['''SELECT c.FirstName, c.LastName FROM Invoice i JOIN Customer c USING (CustomerId)
+GROUP BY c.CustomerId ORDER BY SUM(i.Total) DESC LIMIT 5''']
+
+[[question]]
+id = "m03"
+difficulty = "medium"
+category = "join"
+author = "claude"
+question = "Which sales support agent brought in the most revenue?"
+sql = '''SELECT e.FirstName || ' ' || e.LastName FROM Employee e JOIN Customer c ON c.SupportRepId = e.EmployeeId
+JOIN Invoice i USING (CustomerId) GROUP BY e.EmployeeId ORDER BY SUM(i.Total) DESC LIMIT 1'''
+alt_sql = ['''SELECT e.FirstName, e.LastName FROM Employee e JOIN Customer c ON c.SupportRepId = e.EmployeeId
+JOIN Invoice i USING (CustomerId) GROUP BY e.EmployeeId ORDER BY SUM(i.Total) DESC LIMIT 1''']
+
+[[question]]
+id = "m04"
+difficulty = "medium"
+category = "join"
+author = "claude"
+question = "How many customers does each sales support agent have?"
+sql = '''SELECT e.FirstName || ' ' || e.LastName, COUNT(*) FROM Employee e JOIN Customer c ON c.SupportRepId = e.EmployeeId
+GROUP BY e.EmployeeId'''
+alt_sql = ['''SELECT e.FirstName, e.LastName, COUNT(*) FROM Employee e JOIN Customer c ON c.SupportRepId = e.EmployeeId
+GROUP BY e.EmployeeId''']
+
+[[question]]
+id = "m05"
+difficulty = "medium"
+category = "join"
+author = "claude"
+question = "Which genre sells the most tracks?"
+sql = '''SELECT g.Name FROM InvoiceLine l JOIN Track t USING (TrackId) JOIN Genre g USING (GenreId)
+GROUP BY g.GenreId ORDER BY SUM(l.Quantity) DESC LIMIT 1'''
+
+[[question]]
+id = "m06"
+difficulty = "medium"
+category = "ranking"
+author = "claude"
+question = "Who are our top 5 artists by revenue?"
+sql = '''SELECT ar.Name FROM InvoiceLine l JOIN Track t USING (TrackId) JOIN Album al USING (AlbumId)
+JOIN Artist ar USING (ArtistId) GROUP BY ar.ArtistId ORDER BY SUM(l.UnitPrice * l.Quantity) DESC LIMIT 5'''
+
+[[question]]
+id = "m07"
+difficulty = "medium"
+category = "ranking"
+author = "claude"
+question = "Which country generated the most revenue?"
+sql = '''SELECT BillingCountry FROM Invoice GROUP BY BillingCountry ORDER BY SUM(Total) DESC LIMIT 1'''
+alt_sql = ['''SELECT c.Country FROM Invoice i JOIN Customer c USING (CustomerId) GROUP BY c.Country ORDER BY SUM(i.Total) DESC LIMIT 1''']
+
+[[question]]
+id = "m08"
+difficulty = "medium"
+category = "aggregate"
+author = "claude"
+question = "What's the average order value in each country?"
+sql = '''SELECT BillingCountry, ROUND(AVG(Total), 2) FROM Invoice GROUP BY BillingCountry'''
+
+[[question]]
+id = "m09"
+difficulty = "medium"
+category = "join"
+author = "claude"
+question = "Which album has the most tracks?"
+sql = '''SELECT a.Title FROM Track t JOIN Album a USING (AlbumId) GROUP BY a.AlbumId ORDER BY COUNT(*) DESC LIMIT 1'''
+
+[[question]]
+id = "m10"
+difficulty = "medium"
+category = "join"
+author = "claude"
+question = "How many tracks have never been sold?"
+sql = '''SELECT COUNT(*) FROM Track WHERE TrackId NOT IN (SELECT TrackId FROM InvoiceLine)'''
+
+[[question]]
+id = "m11"
+difficulty = "medium"
+category = "aggregate"
+author = "claude"
+question = "What percentage of our revenue comes from the USA?"
+sql = '''SELECT ROUND(100.0 * SUM(CASE WHEN BillingCountry = 'USA' THEN Total ELSE 0 END) / SUM(Total), 2) FROM Invoice'''
+
+[[question]]
+id = "m12"
+difficulty = "medium"
+category = "date"
+author = "claude"
+question = "Which month of 2012 had the highest revenue?"
+sql = '''SELECT strftime('%Y-%m', InvoiceDate) FROM Invoice WHERE InvoiceDate LIKE '2012%'
+GROUP BY 1 ORDER BY SUM(Total) DESC LIMIT 1'''
+alt_sql = [
+'''SELECT CAST(strftime('%m', InvoiceDate) AS INTEGER) FROM Invoice WHERE InvoiceDate LIKE '2012%'
+GROUP BY 1 ORDER BY SUM(Total) DESC LIMIT 1''',
+'''SELECT 'August' ''',
+]
+
+[[question]]
+id = "m13"
+difficulty = "medium"
+category = "join"
+author = "claude"
+question = "How many of our tracks are videos?"
+sql = '''SELECT COUNT(*) FROM Track t JOIN MediaType m USING (MediaTypeId) WHERE m.Name LIKE '%video%' '''
+
+[[question]]
+id = "m14"
+difficulty = "medium"
+category = "join"
+author = "claude"
+question = "Which customers are assigned to Jane Peacock?"
+sql = '''SELECT c.FirstName || ' ' || c.LastName FROM Customer c JOIN Employee e ON c.SupportRepId = e.EmployeeId
+WHERE e.FirstName = 'Jane' AND e.LastName = 'Peacock' '''
+alt_sql = ['''SELECT c.FirstName, c.LastName FROM Customer c JOIN Employee e ON c.SupportRepId = e.EmployeeId
+WHERE e.FirstName = 'Jane' AND e.LastName = 'Peacock' ''']
+
+[[question]]
+id = "m15"
+difficulty = "medium"
+category = "aggregate"
+author = "claude"
+question = "How long is the average track, in minutes?"
+sql = '''SELECT ROUND(AVG(Milliseconds) / 60000.0, 2) FROM Track'''
+
+[[question]]
+id = "m16"
+difficulty = "medium"
+category = "join"
+author = "claude"
+question = "Who does Steve Johnson report to?"
+sql = '''SELECT m.FirstName || ' ' || m.LastName FROM Employee e JOIN Employee m ON e.ReportsTo = m.EmployeeId
+WHERE e.FirstName = 'Steve' AND e.LastName = 'Johnson' '''
+alt_sql = ['''SELECT m.FirstName, m.LastName FROM Employee e JOIN Employee m ON e.ReportsTo = m.EmployeeId
+WHERE e.FirstName = 'Steve' AND e.LastName = 'Johnson' ''']
+
+# ---------------------------------------------------------------- hard
+
+[[question]]
+id = "h01"
+difficulty = "hard"
+category = "date"
+author = "claude"
+question = "By what percentage did revenue change from 2012 to 2013?"
+sql = '''SELECT ROUND(100.0 * (SUM(CASE WHEN InvoiceDate LIKE '2013%' THEN Total END) - SUM(CASE WHEN InvoiceDate LIKE '2012%' THEN Total END))
+  / SUM(CASE WHEN InvoiceDate LIKE '2012%' THEN Total END), 2) FROM Invoice'''
+
+[[question]]
+id = "h02"
+difficulty = "hard"
+category = "date"
+author = "claude"
+question = "Which customers haven't made a purchase in the last 6 months?"
+sql = '''SELECT c.FirstName || ' ' || c.LastName FROM Customer c JOIN Invoice i USING (CustomerId)
+GROUP BY c.CustomerId HAVING MAX(i.InvoiceDate) < date('2013-12-22', '-6 months')'''
+alt_sql = ['''SELECT c.FirstName, c.LastName FROM Customer c JOIN Invoice i USING (CustomerId)
+GROUP BY c.CustomerId HAVING MAX(i.InvoiceDate) < date('2013-12-22', '-6 months')''']
+
+[[question]]
+id = "h03"
+difficulty = "hard"
+category = "aggregate"
+author = "claude"
+question = "What share of total revenue comes from our top 10 customers?"
+sql = '''SELECT ROUND(100.0 * (SELECT SUM(s) FROM (SELECT SUM(Total) AS s FROM Invoice GROUP BY CustomerId ORDER BY s DESC LIMIT 10))
+  / (SELECT SUM(Total) FROM Invoice), 2)'''
+
+[[question]]
+id = "h04"
+difficulty = "hard"
+category = "join"
+author = "claude"
+question = "Which employees don't manage anyone?"
+sql = '''SELECT FirstName || ' ' || LastName FROM Employee
+WHERE EmployeeId NOT IN (SELECT ReportsTo FROM Employee WHERE ReportsTo IS NOT NULL)'''
+alt_sql = ['''SELECT FirstName, LastName FROM Employee
+WHERE EmployeeId NOT IN (SELECT ReportsTo FROM Employee WHERE ReportsTo IS NOT NULL)''']
+
+[[question]]
+id = "h05"
+difficulty = "hard"
+category = "aggregate"
+author = "claude"
+question = "For each sales support agent, what is the average total spend of their customers?"
+sql = '''SELECT e.FirstName || ' ' || e.LastName, ROUND(AVG(spend), 2) FROM Employee e
+JOIN (SELECT c.SupportRepId, SUM(i.Total) AS spend FROM Customer c JOIN Invoice i USING (CustomerId) GROUP BY c.CustomerId) s
+  ON s.SupportRepId = e.EmployeeId GROUP BY e.EmployeeId'''
+alt_sql = ['''SELECT e.FirstName, e.LastName, ROUND(AVG(spend), 2) FROM Employee e
+JOIN (SELECT c.SupportRepId, SUM(i.Total) AS spend FROM Customer c JOIN Invoice i USING (CustomerId) GROUP BY c.CustomerId) s
+  ON s.SupportRepId = e.EmployeeId GROUP BY e.EmployeeId''']
+
+[[question]]
+id = "h06"
+difficulty = "hard"
+category = "date"
+author = "claude"
+question = "How many customers made a purchase in every year from 2009 to 2013?"
+sql = '''SELECT COUNT(*) FROM (SELECT CustomerId FROM Invoice GROUP BY CustomerId
+HAVING COUNT(DISTINCT strftime('%Y', InvoiceDate)) = 5)'''
+
+[[question]]
+id = "h07"
+difficulty = "hard"
+category = "date"
+author = "claude"
+question = "What was our revenue last year?"
+# "Last year" = calendar 2012 (today is treated as 2013-12-22). The last 12 months also passes.
+sql = '''SELECT ROUND(SUM(Total), 2) FROM Invoice WHERE InvoiceDate >= '2012-01-01' AND InvoiceDate < '2013-01-01' '''
+alt_sql = ['''SELECT ROUND(SUM(Total), 2) FROM Invoice WHERE InvoiceDate >= date('2013-12-22', '-1 year')''']
+
+[[question]]
+id = "h08"
+difficulty = "hard"
+category = "join"
+author = "claude"
+question = "How many tracks are on our biggest playlist?"
+# Trap: two different playlists are both named "Music" (3,290 tracks each). Grouping by name gives 6,580.
+sql = '''SELECT COUNT(*) FROM PlaylistTrack GROUP BY PlaylistId ORDER BY COUNT(*) DESC LIMIT 1'''
+
+[[question]]
+id = "h09"
+difficulty = "hard"
+category = "aggregate"
+author = "claude"
+question = "What's the average number of tracks per invoice?"
+sql = '''SELECT ROUND(COUNT(*) * 1.0 / (SELECT COUNT(*) FROM Invoice), 2) FROM InvoiceLine'''
+
+[[question]]
+id = "h10"
+difficulty = "hard"
+category = "join"
+author = "claude"
+question = "Which artist's tracks span the most different genres?"
+sql = '''SELECT ar.Name FROM Track t JOIN Album al USING (AlbumId) JOIN Artist ar USING (ArtistId)
+GROUP BY ar.ArtistId ORDER BY COUNT(DISTINCT t.GenreId) DESC LIMIT 1'''
+
+[[question]]
+id = "h11"
+difficulty = "hard"
+category = "date"
+author = "claude"
+question = "Who was our top customer in 2013?"
+sql = '''SELECT c.FirstName || ' ' || c.LastName FROM Invoice i JOIN Customer c USING (CustomerId)
+WHERE i.InvoiceDate LIKE '2013%' GROUP BY c.CustomerId ORDER BY SUM(i.Total) DESC LIMIT 1'''
+alt_sql = ['''SELECT c.FirstName, c.LastName FROM Invoice i JOIN Customer c USING (CustomerId)
+WHERE i.InvoiceDate LIKE '2013%' GROUP BY c.CustomerId ORDER BY SUM(i.Total) DESC LIMIT 1''']
+
+[[question]]
+id = "h12"
+difficulty = "hard"
+category = "date"
+author = "claude"
+question = "How many customers made their first purchase in 2010?"
+sql = '''SELECT COUNT(*) FROM (SELECT CustomerId FROM Invoice GROUP BY CustomerId HAVING MIN(InvoiceDate) LIKE '2010%')'''
+
+[[question]]
+id = "h13"
+difficulty = "hard"
+category = "join"
+author = "claude"
+question = "What are the top 3 genres by revenue among US customers?"
+sql = '''SELECT g.Name FROM InvoiceLine l JOIN Invoice i USING (InvoiceId) JOIN Track t USING (TrackId)
+JOIN Genre g USING (GenreId) WHERE i.BillingCountry = 'USA'
+GROUP BY g.GenreId ORDER BY SUM(l.UnitPrice * l.Quantity) DESC LIMIT 3'''
+
+# ---------------------------------------------------------------- refuse (data can't answer)
+
+[[question]]
+id = "r01"
+difficulty = "hard"
+category = "unanswerable"
+author = "claude"
+expect = "refuse"
+question = "How many visitors did our website get in 2012?"
+sql = ""
+
+[[question]]
+id = "r02"
+difficulty = "hard"
+category = "unanswerable"
+author = "claude"
+expect = "refuse"
+question = "What's the average customer rating of our tracks?"
+sql = ""
+
+[[question]]
+id = "r03"
+difficulty = "hard"
+category = "unanswerable"
+author = "claude"
+expect = "refuse"
+question = "How many refunds did we issue in 2013?"
+sql = ""

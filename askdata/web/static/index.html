@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ask Data</title>
+  <link rel="icon" href="favicon.ico">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <header class="bar">
+    <div class="brand">
+      <img src="icon.png" alt="" width="28" height="28">
+      <span>Ask Data</span>
+    </div>
+    <nav id="dataset-switch" class="dataset-switch" aria-label="Dataset"></nav>
+    <div class="bar-actions">
+      <span id="model-status" class="status" role="status">Starting the model…</span>
+    </div>
+  </header>
+
+  <main>
+    <form id="ask-form" class="ask" autocomplete="off">
+      <label for="question">Ask anything about the music store</label>
+      <div class="ask-row">
+        <input id="question" name="question" type="text" maxlength="300"
+               placeholder="What was total revenue in each year?" autofocus>
+        <button id="ask-button" type="submit">Ask</button>
+      </div>
+      <p id="library-summary" class="summary"></p>
+    </form>
+
+    <section id="examples" class="examples" aria-label="Example questions">
+      <p>Not sure where to start? Try one of these.</p>
+      <div class="chips"></div>
+    </section>
+
+    <div id="feeds"></div>
+  </main>
+
+  <div id="tooltip" class="tooltip" hidden></div>
+  <script src="app.js"></script>
+</body>
+</html>
