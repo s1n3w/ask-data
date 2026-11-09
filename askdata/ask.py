@@ -34,7 +34,9 @@ Rules:
 - To average a per-item total (e.g. average spend per customer), total each item first, then
   average those totals.
 - To count how many items meet a per-item condition (GROUP BY ... HAVING), count the groups in an
-  outer query: SELECT COUNT(*) FROM (SELECT ... GROUP BY ... HAVING ...).
+  outer query: SELECT COUNT(*) FROM (SELECT ... GROUP BY ... HAVING ...). This is only for counting
+  qualifying groups. For the size of the largest or smallest group, return that group's own
+  COUNT(*) with ORDER BY ... LIMIT 1; never wrap a LIMIT 1 query in an outer COUNT.
 - Return values as stored, one per column (e.g. title and show_title as separate columns); don't
   join columns into display strings.
 - If the schema has no data for what is asked (for example {missing_examples}), reply with one line: CANNOT_ANSWER: <what is missing>.

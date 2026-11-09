@@ -12,9 +12,10 @@ self-service tool only helps if people can trust it, so it shows its SQL, refuse
 data can't answer, never touches data it shouldn't, and has measured accuracy.
 
 - **Runs fully locally.** `qwen3.6:27b` via Ollama on one RTX 4090. No data leaves the machine.
-- **Measured accuracy.** **93.2% on first contact, with no dataset-specific tuning**, and 97.7%
-  after two general rules (both on `qwen2.5-coder:32b`). The current default, `qwen3.6:27b`, scored
-  42 and 43 of 44 in its latest two runs. Writing and running the SQL takes about 1 second (median), around 2 seconds at
+- **Measured accuracy.** The current version answers **all 70 test questions correctly in three
+  out of three runs**: the original 44, plus 26 new questions written before the latest change and
+  scored separately. The first-contact number, before any tuning on this dataset, was 93.2%
+  (41 of 44). Writing and running the SQL takes about 1 second (median), around 1.3 seconds at
   the 90th percentile; a full written answer in the app usually arrives in 2–3 seconds.
 - **Nothing to set up but the model.** Chinook ships in the repo, so anyone can try it with just Ollama.
 - **Knows when to say no.** It refuses questions the data can't answer instead of inventing an answer.
@@ -38,7 +39,32 @@ customers haven't purchased in the last 6 months?", "What share of revenue comes
 
 v1 is the real generalization number, since v2's rules came from reading v1's failures. Its
 misses were new kinds of mistake: returning employee IDs instead of names, and averaging invoices
-instead of per-customer totals (a grain error, which still fails).
+instead of per-customer totals (a grain error). Both v1 and v2 used `qwen2.5-coder:32b`.
+
+### November 2026: a fix, checked on new questions
+
+Three runs of the current default (`qwen3.6:27b`) scored 43 of 44 every time. The one miss
+was "How many tracks are on our biggest playlist?": it found the playlist, then wrapped it in the
+October counting rule's outer `COUNT(*)` and answered 1.
+
+Fixing a known miss and re-running the same questions only shows that miss is fixed, so first I
+wrote 26 new questions with known answers (`group = "holdout"` in `chinook.toml`) and scored the
+unchanged version on them: 25 of 26, twice. Its one miss was my wording: "How many albums do we
+sell?" can mean the catalog or the albums that have sold, and it chose the second. Both readings
+now count.
+
+The fix is general, not about playlists: the counting rule now says it is only for counting
+qualifying groups, and never to wrap a `LIMIT 1` query in an outer `COUNT`.
+
+| Version | Core (44) | Holdout (26) | Runs |
+|---|---|---|---|
+| Before the fix | 43 (97.7%) | 25 (96.2%), 26 with both album readings | 3 core, 2 holdout |
+| **After the fix** | **44 (100%)** | **26 (100%)** | 3 each, identical |
+
+Caveats: I wrote the holdout questions too, so they aren't fully independent, and two of them
+(x23, x24) test the same "size of the biggest group" pattern as the fixed question. Both passed
+before the fix as well. At temperature 0 the runs were identical, so three runs show
+consistency, not a range.
 
 ### Which model?
 
@@ -184,7 +210,7 @@ datasets/chinook/
   chinook.db     Chinook v1.4.5 sample database (MIT license, see LICENSE.md)
   schema.sql     annotated schema the model reads
 evals/
-  questions/     chinook.toml (44 questions, with gold SQL)
+  questions/     chinook.toml (44 core + 26 holdout questions, with gold SQL)
   compare.py     result-set matching
   compare_models.py  accuracy, latency, memory and load time per model -> models/*.md
   run.py         scoring and reports
@@ -233,9 +259,11 @@ platforms, or when the team needs control over the prompts and the evaluation.
 
 ## Limitations and next steps
 
-- Known failure: the per-customer average is still computed per invoice (h05).
-- Next: add held-out questions written by someone else; measure time saved against writing the SQL by
-  hand; run each eval several times to report accuracy as a range instead of a single number.
+- No known failures on the current question sets. The per-customer average (h05), which failed on
+  `qwen2.5-coder:32b`, passes on `qwen3.6:27b`.
+- 100% on 70 questions about one small sample database is not 100% on real company data: a new
+  schema needs its own question set.
+- Next: add questions written by someone else; measure time saved against writing the SQL by hand.
 
 ## License
 

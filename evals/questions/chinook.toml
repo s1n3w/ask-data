@@ -440,3 +440,251 @@ author = "claude"
 expect = "refuse"
 question = "How many refunds did we issue in 2013?"
 sql = ""
+
+# ---------------------------------------------------------------- holdout
+# Written 2026-11-09, before the November tuning change and before any model run on them, as a
+# check that the change isn't just fitting the 44 core questions. Scored separately (group).
+# Gold answers were checked against the database, and questions whose answer was a tie were dropped.
+
+[[question]]
+id = "x01"
+group = "holdout"
+difficulty = "easy"
+category = "count"
+author = "claude"
+question = "How many artists are in our catalog?"
+sql = '''SELECT COUNT(*) FROM Artist'''
+
+[[question]]
+id = "x02"
+group = "holdout"
+difficulty = "easy"
+category = "count"
+author = "claude"
+question = "How many albums do we sell?"
+sql = '''SELECT COUNT(*) FROM Album'''
+# Ambiguous as written: "albums we sell" can mean the catalog (347) or albums that have sold (304).
+# The model's first run read it the second way, which is reasonable, so both readings count.
+alt_sql = ['''SELECT COUNT(DISTINCT t.AlbumId) FROM InvoiceLine il JOIN Track t ON t.TrackId = il.TrackId''']
+
+[[question]]
+id = "x03"
+group = "holdout"
+difficulty = "easy"
+category = "filter"
+author = "claude"
+question = "How many invoices went to customers in Canada?"
+sql = '''SELECT COUNT(*) FROM Invoice WHERE BillingCountry = 'Canada' '''
+
+[[question]]
+id = "x04"
+group = "holdout"
+difficulty = "easy"
+category = "ranking"
+author = "claude"
+question = "Which media type do most of our tracks use?"
+sql = '''SELECT m.Name FROM Track t JOIN MediaType m ON m.MediaTypeId = t.MediaTypeId GROUP BY m.MediaTypeId ORDER BY COUNT(*) DESC LIMIT 1'''
+
+[[question]]
+id = "x05"
+group = "holdout"
+difficulty = "easy"
+category = "date"
+author = "claude"
+question = "What was our total revenue in 2010?"
+sql = '''SELECT SUM(Total) FROM Invoice WHERE InvoiceDate >= '2010-01-01' AND InvoiceDate < '2011-01-01' '''
+
+[[question]]
+id = "x06"
+group = "holdout"
+difficulty = "medium"
+category = "ranking"
+author = "claude"
+question = "Which city brought in the most revenue?"
+sql = '''SELECT BillingCity FROM Invoice GROUP BY BillingCity ORDER BY SUM(Total) DESC LIMIT 1'''
+
+[[question]]
+id = "x07"
+group = "holdout"
+difficulty = "medium"
+category = "join"
+author = "claude"
+question = "Which artist has the most albums?"
+sql = '''SELECT a.Name FROM Album al JOIN Artist a ON a.ArtistId = al.ArtistId GROUP BY a.ArtistId ORDER BY COUNT(*) DESC LIMIT 1'''
+
+[[question]]
+id = "x08"
+group = "holdout"
+difficulty = "medium"
+category = "date"
+author = "claude"
+question = "Who is our longest-serving employee?"
+sql = '''SELECT FirstName || ' ' || LastName FROM Employee ORDER BY HireDate LIMIT 1'''
+alt_sql = ['''SELECT FirstName, LastName FROM Employee ORDER BY HireDate LIMIT 1''']
+
+[[question]]
+id = "x09"
+group = "holdout"
+difficulty = "medium"
+category = "aggregate"
+author = "claude"
+question = "What's the average price of a Jazz track?"
+sql = '''SELECT AVG(t.UnitPrice) FROM Track t JOIN Genre g ON g.GenreId = t.GenreId WHERE g.Name = 'Jazz' '''
+
+[[question]]
+id = "x10"
+group = "holdout"
+difficulty = "medium"
+category = "date"
+author = "claude"
+question = "How many invoices did we issue in the first quarter of 2013?"
+sql = '''SELECT COUNT(*) FROM Invoice WHERE InvoiceDate >= '2013-01-01' AND InvoiceDate < '2013-04-01' '''
+
+[[question]]
+id = "x11"
+group = "holdout"
+difficulty = "medium"
+category = "null-handling"
+author = "claude"
+question = "How many of our customers have a company listed?"
+sql = '''SELECT COUNT(*) FROM Customer WHERE Company IS NOT NULL'''
+
+[[question]]
+id = "x12"
+group = "holdout"
+difficulty = "medium"
+category = "filter"
+author = "claude"
+question = "How many tracks run longer than 10 minutes?"
+sql = '''SELECT COUNT(*) FROM Track WHERE Milliseconds > 600000'''
+
+[[question]]
+id = "x13"
+group = "holdout"
+difficulty = "medium"
+category = "aggregate"
+author = "claude"
+question = "How many customers do we have in each country?"
+sql = '''SELECT Country, COUNT(*) FROM Customer GROUP BY Country'''
+
+[[question]]
+id = "x14"
+group = "holdout"
+difficulty = "hard"
+category = "aggregate"
+author = "claude"
+question = "Which genre has the longest average track length?"
+sql = '''SELECT g.Name FROM Track t JOIN Genre g ON g.GenreId = t.GenreId GROUP BY g.GenreId ORDER BY AVG(t.Milliseconds) DESC LIMIT 1'''
+
+[[question]]
+id = "x15"
+group = "holdout"
+difficulty = "hard"
+category = "join"
+author = "claude"
+question = "How much revenue have Rock tracks brought in?"
+sql = '''SELECT SUM(il.UnitPrice * il.Quantity) FROM InvoiceLine il JOIN Track t ON t.TrackId = il.TrackId JOIN Genre g ON g.GenreId = t.GenreId WHERE g.Name = 'Rock' '''
+
+[[question]]
+id = "x16"
+group = "holdout"
+difficulty = "hard"
+category = "join"
+author = "claude"
+question = "How many different artists has Luis Rojas bought music from?"
+sql = '''SELECT COUNT(DISTINCT al.ArtistId) FROM Customer c JOIN Invoice i ON i.CustomerId = c.CustomerId JOIN InvoiceLine il ON il.InvoiceId = i.InvoiceId JOIN Track t ON t.TrackId = il.TrackId JOIN Album al ON al.AlbumId = t.AlbumId WHERE c.FirstName = 'Luis' AND c.LastName = 'Rojas' '''
+
+[[question]]
+id = "x17"
+group = "holdout"
+difficulty = "hard"
+category = "join"
+author = "claude"
+question = "Whose customers bought the most tracks in 2012, among our sales support agents?"
+sql = '''SELECT e.FirstName || ' ' || e.LastName FROM Employee e JOIN Customer c ON c.SupportRepId = e.EmployeeId JOIN Invoice i ON i.CustomerId = c.CustomerId JOIN InvoiceLine il ON il.InvoiceId = i.InvoiceId WHERE i.InvoiceDate >= '2012-01-01' AND i.InvoiceDate < '2013-01-01' GROUP BY e.EmployeeId ORDER BY SUM(il.Quantity) DESC LIMIT 1'''
+alt_sql = ['''SELECT e.FirstName, e.LastName FROM Employee e JOIN Customer c ON c.SupportRepId = e.EmployeeId JOIN Invoice i ON i.CustomerId = c.CustomerId JOIN InvoiceLine il ON il.InvoiceId = i.InvoiceId WHERE i.InvoiceDate >= '2012-01-01' AND i.InvoiceDate < '2013-01-01' GROUP BY e.EmployeeId ORDER BY SUM(il.Quantity) DESC LIMIT 1''']
+
+[[question]]
+id = "x18"
+group = "holdout"
+difficulty = "hard"
+category = "join"
+author = "claude"
+question = "How many playlists include at least one Iron Maiden track?"
+sql = '''SELECT COUNT(DISTINCT pt.PlaylistId) FROM PlaylistTrack pt JOIN Track t ON t.TrackId = pt.TrackId JOIN Album al ON al.AlbumId = t.AlbumId JOIN Artist a ON a.ArtistId = al.ArtistId WHERE a.Name = 'Iron Maiden' '''
+
+[[question]]
+id = "x19"
+group = "holdout"
+difficulty = "hard"
+category = "aggregate"
+author = "claude"
+question = "On average, how many invoices does each customer have?"
+sql = '''SELECT COUNT(*) * 1.0 / (SELECT COUNT(*) FROM Customer) FROM Invoice'''
+
+[[question]]
+id = "x20"
+group = "holdout"
+difficulty = "hard"
+category = "aggregate"
+author = "claude"
+question = "Which customers have spent more than $45 in total?"
+sql = '''SELECT c.FirstName || ' ' || c.LastName FROM Customer c JOIN Invoice i ON i.CustomerId = c.CustomerId GROUP BY c.CustomerId HAVING SUM(i.Total) > 45'''
+alt_sql = ['''SELECT c.FirstName, c.LastName FROM Customer c JOIN Invoice i ON i.CustomerId = c.CustomerId GROUP BY c.CustomerId HAVING SUM(i.Total) > 45''']
+
+[[question]]
+id = "x21"
+group = "holdout"
+difficulty = "hard"
+category = "join"
+author = "claude"
+question = "Which manager has the most direct reports?"
+sql = '''SELECT m.FirstName || ' ' || m.LastName FROM Employee e JOIN Employee m ON m.EmployeeId = e.ReportsTo GROUP BY m.EmployeeId ORDER BY COUNT(*) DESC LIMIT 1'''
+alt_sql = ['''SELECT m.FirstName, m.LastName FROM Employee e JOIN Employee m ON m.EmployeeId = e.ReportsTo GROUP BY m.EmployeeId ORDER BY COUNT(*) DESC LIMIT 1''']
+
+[[question]]
+id = "x22"
+group = "holdout"
+difficulty = "hard"
+category = "ranking"
+author = "claude"
+question = "Which genre has the most tracks that have never sold?"
+sql = '''SELECT g.Name FROM Track t JOIN Genre g ON g.GenreId = t.GenreId WHERE t.TrackId NOT IN (SELECT TrackId FROM InvoiceLine) GROUP BY g.GenreId ORDER BY COUNT(*) DESC LIMIT 1'''
+
+[[question]]
+id = "x23"
+group = "holdout"
+difficulty = "hard"
+category = "ranking"
+author = "claude"
+question = "How many tracks does our largest album have?"
+sql = '''SELECT COUNT(*) FROM Track GROUP BY AlbumId ORDER BY COUNT(*) DESC LIMIT 1'''
+
+[[question]]
+id = "x24"
+group = "holdout"
+difficulty = "hard"
+category = "ranking"
+author = "claude"
+question = "How many customers does our busiest sales support agent look after?"
+sql = '''SELECT COUNT(*) FROM Customer GROUP BY SupportRepId ORDER BY COUNT(*) DESC LIMIT 1'''
+
+[[question]]
+id = "x25"
+group = "holdout"
+difficulty = "medium"
+category = "unanswerable"
+author = "claude"
+expect = "refuse"
+question = "What's our profit margin on track sales?"
+sql = ""
+
+[[question]]
+id = "x26"
+group = "holdout"
+difficulty = "medium"
+category = "unanswerable"
+author = "claude"
+expect = "refuse"
+question = "Which marketing campaign brought in the most new customers?"
+sql = ""
