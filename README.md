@@ -128,27 +128,45 @@ question ──► prompt: schema with column notes, real column values, today's
 
 ## Running it
 
-Requirements: Windows, Python 3.12, [Ollama](https://ollama.com) and a GPU with about 24 GB of
-memory for the default model. Smaller models work too: pass `--model`.
+You don't have to run it to see how it works: the screenshot and results above show it in action.
 
-```powershell
-python -m venv .venv
-.venv\Scripts\pip install -r requirements.txt -r requirements-dev.txt
-ollama pull qwen3.6:27b
+**To run it, you need:** Windows, [Python 3.12](https://www.python.org/downloads/),
+[Ollama](https://ollama.com), and a GPU with about 24 GB of memory for the default model. The
+model is a large download.
 
-.venv\Scripts\python -m askdata.ask "Who are our top 5 customers by total spend?"
-```
+1. Install Python 3.12 and Ollama, and make sure Ollama is running.
+2. On this page, click **Code**, then **Download ZIP**. Extract the ZIP and open the extracted folder.
+3. Open PowerShell in that folder: click the folder's address bar, type `powershell` and press Enter.
+4. Run these one at a time:
 
-| To | Run |
-|---|---|
-| Open the desktop app | `.venv\Scripts\pythonw -m askdata.app` (needs Brave) |
-| Ask from the terminal | `.venv\Scripts\python -m askdata.ask` |
-| Ask one question | `.venv\Scripts\python -m askdata.ask "Which genres sell best in the USA?"` |
-| Run an eval | `.venv\Scripts\python -m evals.run --label my-change` |
-| Compare models | `.venv\Scripts\python -m evals.compare_models qwen2.5-coder:14b qwen2.5-coder:32b` |
-| Run the unit tests | `.venv\Scripts\python -m pytest` |
+   ```powershell
+   py -3.12 -m venv .venv
+   .venv\Scripts\pip install -r requirements.txt
+   ollama pull qwen3.6:27b
+   ```
 
-The app, the launcher and the eval runner start Ollama themselves and stop it when they finish.
+5. Double-click **`Ask Data.bat`**. It starts Ollama if needed and loads the model.
+6. Ask a question, such as `Who are our top 5 customers by total spend?` You'll get the SQL, a
+   results table and a written answer. The top customer should be Helena Holý at $49.62.
+7. Press Enter on a blank line to quit.
+
+### Other commands
+
+Install the test tools first if you want to run the tests or evals:
+`.venv\Scripts\pip install -r requirements-dev.txt`
+
+| To | Run | Ollama |
+|---|---|---|
+| Ask in the terminal | `.venv\Scripts\python -m askdata.launcher` | Starts it for you |
+| Open the desktop app (needs Brave) | `.venv\Scripts\pythonw -m askdata.app` | Starts it for you |
+| Ask one question | `.venv\Scripts\python -m askdata.ask "Which genres sell best in the USA?"` | Must already be running |
+| Use a smaller model | `.venv\Scripts\python -m askdata.ask --model qwen2.5-coder:14b "Which genres sell best in the USA?"` | Must already be running; pull the model first |
+| Run an eval | `.venv\Scripts\python -m evals.run --label my-change` | Starts it for you |
+| Compare models | `.venv\Scripts\python -m evals.compare_models qwen2.5-coder:14b qwen2.5-coder:32b` | Starts it for you |
+| Run the unit tests | `.venv\Scripts\python -m pytest` | Not needed |
+
+If `askdata.ask` fails with a connection error, Ollama isn't running. Start Ollama, or use
+`Ask Data.bat`, which starts it for you.
 
 ## Project layout
 
